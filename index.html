@@ -57,7 +57,6 @@
             background: #3b82f6;
         }
 
-        /* Анимация уведомления */
         #notification-toast {
             opacity: 0; 
             pointer-events: none; 
@@ -81,6 +80,22 @@
             background-repeat: no-repeat;
             background-color: #334155;
             flex-shrink: 0;
+        }
+
+        /* Стили для голосовых */
+        .voice-message {
+            display: flex;
+            items-center: center;
+            gap: 10px;
+            min-width: 140px;
+        }
+        .record-active {
+            animation: pulse-red 1.5s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
     </style>
 </head>
@@ -147,11 +162,31 @@
             <!-- 1. Global Chat View -->
             <section id="view-global" class="view active">
                 <div id="global-messages" class="chat-container p-4 space-y-4"></div>
+                
+                <!-- Recording UI (Hidden by default) -->
+                <div id="global-record-ui" class="hidden px-4 py-2 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3 text-red-500">
+                        <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        <span id="global-record-timer" class="text-sm font-mono">00:00</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="cancel-global-record" class="text-slate-400 text-xs font-bold uppercase p-2">Отмена</button>
+                        <button id="stop-global-record" class="bg-red-600 p-2 rounded-full text-white shadow-lg shadow-red-900/40">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                        </button>
+                    </div>
+                </div>
+
                 <form class="p-3 md:p-4 border-t border-slate-800 flex gap-2 bg-slate-900 chat-input-form">
-                    <input type="text" placeholder="Сообщение в общий чат..." class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-blue-500">
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl text-white active:scale-90 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                    </button>
+                    <input type="text" placeholder="Сообщение..." class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-blue-500">
+                    <div class="flex gap-1.5">
+                        <button type="button" class="voice-start-btn bg-slate-800 text-slate-400 hover:text-blue-400 p-3 rounded-xl active:scale-90 transition-all border border-slate-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                        </button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl text-white active:scale-90 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                    </div>
                 </form>
             </section>
 
@@ -160,9 +195,7 @@
                 <div class="p-4 border-b border-slate-800 bg-slate-900/50">
                     <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">Пользователи в сети</h3>
                 </div>
-                <div id="contacts-list" class="flex-1 overflow-y-auto p-2 space-y-1.5">
-                    <!-- User list item -->
-                </div>
+                <div id="contacts-list" class="flex-1 overflow-y-auto p-2 space-y-1.5"></div>
             </section>
 
             <!-- 3. Private Chat View -->
@@ -178,11 +211,31 @@
                     </div>
                 </div>
                 <div id="private-messages" class="chat-container p-4 space-y-4"></div>
+
+                <!-- Private Record UI -->
+                <div id="private-record-ui" class="hidden px-4 py-2 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3 text-indigo-500">
+                        <div class="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                        <span id="private-record-timer" class="text-sm font-mono">00:00</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="cancel-private-record" class="text-slate-400 text-xs font-bold uppercase p-2">Отмена</button>
+                        <button id="stop-private-record" class="bg-indigo-600 p-2 rounded-full text-white shadow-lg shadow-indigo-900/40">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                        </button>
+                    </div>
+                </div>
+
                 <form class="p-3 md:p-4 border-t border-slate-800 flex gap-2 bg-slate-900 chat-input-form">
                     <input type="text" placeholder="Личное сообщение..." class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl text-white active:scale-90 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                    </button>
+                    <div class="flex gap-1.5">
+                        <button type="button" class="voice-start-btn bg-slate-800 text-slate-400 hover:text-indigo-400 p-3 rounded-xl active:scale-90 transition-all border border-slate-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                        </button>
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl text-white active:scale-90 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                    </div>
                 </form>
             </section>
 
@@ -207,7 +260,6 @@
                                 <button id="save-profile-btn" class="bg-blue-600 hover:bg-blue-500 px-4 rounded-xl font-bold text-sm active:scale-95 transition-transform">ОК</button>
                             </div>
                         </div>
-                        
                         <div class="pt-6 border-t border-slate-800 space-y-4">
                             <div class="space-y-2">
                                 <label class="text-xs font-bold text-slate-400 ml-1 text-red-400">СМЕНА ПАРОЛЯ</label>
@@ -248,24 +300,7 @@
             addDoc, onSnapshot, serverTimestamp, query, where, or 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Функция генерации цифрового ID из UID
-        const generateNumericId = (uid) => {
-            if (!uid) return '0000000000';
-            let hash = 0;
-            for (let i = 0; i < uid.length; i++) {
-                const char = uid.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = Math.abs(hash);
-            }
-            return hash.toString().slice(0, 10).padStart(10, '0');
-        };
-
-        const resetHeight = () => {
-            document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
-        };
-        window.addEventListener('resize', resetHeight);
-        resetHeight();
-
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCFXk-lrKxyXlVC0NpSl1IIfG3dOOWlGJI",
             authDomain: "max-2-d595f.firebaseapp.com",
@@ -288,6 +323,29 @@
         let currentView = 'global';
         let initialLoadDone = false;
 
+        // Recording State
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordTimerInterval = null;
+        let recordSeconds = 0;
+
+        const generateNumericId = (uid) => {
+            if (!uid) return '0000000000';
+            let hash = 0;
+            for (let i = 0; i < uid.length; i++) {
+                const char = uid.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = Math.abs(hash);
+            }
+            return hash.toString().slice(0, 10).padStart(10, '0');
+        };
+
+        const resetHeight = () => {
+            document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+        };
+        window.addEventListener('resize', resetHeight);
+        resetHeight();
+
         const authScreen = document.getElementById('auth-screen');
         const authSubmit = document.getElementById('auth-submit');
         const authToggle = document.getElementById('auth-toggle-btn');
@@ -306,9 +364,7 @@
             const email = document.getElementById('auth-email').value.trim();
             const pass = document.getElementById('auth-password').value.trim();
             const name = authNameInput.value.trim();
-
             if (!email || !pass) return alert("Заполните поля!");
-
             try {
                 if (isRegistration) {
                     if (!name) return alert("Введите имя!");
@@ -323,9 +379,7 @@
                 } else {
                     await signInWithEmailAndPassword(auth, email, pass);
                 }
-            } catch (e) {
-                alert("Ошибка: " + e.message);
-            }
+            } catch (e) { alert("Ошибка: " + e.message); }
         };
 
         document.getElementById('logout-btn').onclick = () => signOut(auth);
@@ -335,12 +389,10 @@
                 currentUser = u;
                 authScreen.classList.add('hidden');
                 document.getElementById('app-container').classList.remove('hidden');
-                
                 onSnapshot(doc(db, 'artifacts', appId, 'users', u.uid), (doc) => {
                     userData = doc.data();
                     updateUIProfile();
                 });
-                
                 setupGlobalChat();
                 setupContacts();
                 setupNotifications();
@@ -354,16 +406,12 @@
             currentView = viewName;
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            
             const target = document.getElementById('view-' + viewName);
             if (target) target.classList.add('active');
-            
             const navBtn = document.getElementById('nav-' + viewName);
             if (navBtn) navBtn.classList.add('active');
-
             const titles = { global: 'Общий чат', contacts: 'Сообщения', profile: 'Ваш профиль', 'private-chat': 'Личная переписка' };
             document.getElementById('view-title').innerText = titles[viewName] || 'MAX 2';
-            
             if (viewName === 'global') {
                 const cont = document.getElementById('global-messages');
                 cont.scrollTop = cont.scrollHeight;
@@ -374,7 +422,6 @@
             if (!userData) return;
             const avatars = document.querySelectorAll('#header-avatar, #profile-avatar-display');
             const avatarUrl = userData.avatar || '';
-            
             avatars.forEach(el => {
                 if (avatarUrl) {
                     el.style.backgroundImage = `url("${avatarUrl}")`;
@@ -384,11 +431,91 @@
                     el.classList.add('bg-slate-700');
                 }
             });
-
             document.getElementById('profile-name-input').value = userData.displayName || '';
-            // Используем цифровой ID здесь
             document.getElementById('profile-uid').innerText = "ID: " + generateNumericId(userData.uid);
         }
+
+        // Voice Recording Logic
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                
+                const isGlobal = currentView === 'global';
+                const recordUI = document.getElementById(isGlobal ? 'global-record-ui' : 'private-record-ui');
+                const timerDisplay = document.getElementById(isGlobal ? 'global-record-timer' : 'private-record-timer');
+                const form = recordUI.nextElementSibling;
+                
+                recordUI.classList.remove('hidden');
+                form.classList.add('hidden');
+                
+                recordSeconds = 0;
+                timerDisplay.innerText = "00:00";
+                recordTimerInterval = setInterval(() => {
+                    recordSeconds++;
+                    const m = Math.floor(recordSeconds / 60).toString().padStart(2, '0');
+                    const s = (recordSeconds % 60).toString().padStart(2, '0');
+                    timerDisplay.innerText = `${m}:${s}`;
+                }, 1000);
+
+                mediaRecorder.onstop = async () => {
+                    clearInterval(recordTimerInterval);
+                    recordUI.classList.add('hidden');
+                    form.classList.remove('hidden');
+                    
+                    if (audioChunks.length === 0) return;
+                    
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    if (audioBlob.size < 1000) return; // Too short
+
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result;
+                        await sendVoiceMessage(base64Audio);
+                    };
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+            } catch (err) {
+                alert("Микрофон недоступен: " + err.message);
+            }
+        }
+
+        async function sendVoiceMessage(base64) {
+            const isGlobal = currentView === 'global';
+            const path = isGlobal ? 'messages' : 'direct_messages';
+            const payload = {
+                audio: base64,
+                createdAt: serverTimestamp(),
+                senderName: userData.displayName,
+                senderId: currentUser.uid
+            };
+            if (!isGlobal) {
+                payload.from = currentUser.uid;
+                payload.to = activePrivatePartner.uid;
+            }
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', path), payload);
+            } catch(e) { console.error(e); }
+        }
+
+        document.querySelectorAll('.voice-start-btn').forEach(btn => {
+            btn.onclick = () => startRecording();
+        });
+
+        ['global', 'private'].forEach(type => {
+            document.getElementById(`stop-${type}-record`).onclick = () => mediaRecorder && mediaRecorder.stop();
+            document.getElementById(`cancel-${type}-record`).onclick = () => {
+                audioChunks = [];
+                mediaRecorder && mediaRecorder.stop();
+            };
+        });
 
         function setupGlobalChat() {
             const ref = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
@@ -397,7 +524,7 @@
                 snap.forEach(d => msgs.push({id: d.id, ...d.data()}));
                 msgs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
                 renderMessages('global-messages', msgs);
-            }, (err) => console.error(err));
+            });
         }
 
         function setupContacts() {
@@ -408,7 +535,6 @@
                 snap.forEach(d => {
                     const u = d.data();
                     if (u.uid === currentUser.uid) return;
-
                     const item = document.createElement('div');
                     item.className = "flex items-center gap-3 p-3 bg-slate-800/20 rounded-xl hover:bg-slate-800/60 active:scale-[0.98] transition-all cursor-pointer border border-slate-800/50";
                     item.innerHTML = `
@@ -427,10 +553,7 @@
         function setupNotifications() {
             const ref = collection(db, 'artifacts', appId, 'public', 'data', 'direct_messages');
             onSnapshot(ref, (snap) => {
-                if (!initialLoadDone) {
-                    initialLoadDone = true;
-                    return;
-                }
+                if (!initialLoadDone) { initialLoadDone = true; return; }
                 snap.docChanges().forEach((change) => {
                     if (change.type === "added") {
                         const msg = change.doc.data();
@@ -445,30 +568,23 @@
         async function showNotification(msg) {
             const senderDoc = await getDoc(doc(db, 'artifacts', appId, 'users', msg.from));
             const senderData = senderDoc.data();
-            
             const toast = document.getElementById('notification-toast');
             const notifAvatar = document.getElementById('notif-avatar');
             const notifSender = document.getElementById('notif-sender');
             const notifText = document.getElementById('notif-text');
-
             if (senderData?.avatar) notifAvatar.style.backgroundImage = `url("${senderData.avatar}")`;
             else notifAvatar.style.backgroundImage = 'none';
-
             notifSender.innerText = senderData?.displayName || 'Новое сообщение';
-            notifText.innerText = msg.text;
-
+            notifText.innerText = msg.audio ? "🎤 Голосовое сообщение" : msg.text;
             toast.classList.add('show');
-
             toast.onclick = () => {
                 if (senderData) openPrivateChat(senderData);
                 toast.classList.remove('show');
             };
-
             document.getElementById('close-notif').onclick = (e) => {
                 e.stopPropagation();
                 toast.classList.remove('show');
             };
-
             setTimeout(() => toast.classList.remove('show'), 5000);
         }
 
@@ -478,9 +594,7 @@
             const pAvatar = document.getElementById('private-partner-avatar');
             if(partner.avatar) pAvatar.style.backgroundImage = `url("${partner.avatar}")`;
             else pAvatar.style.backgroundImage = 'none';
-
             switchView('private-chat');
-
             const ref = collection(db, 'artifacts', appId, 'public', 'data', 'direct_messages');
             onSnapshot(ref, (snap) => {
                 const msgs = [];
@@ -493,21 +607,32 @@
                 });
                 msgs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
                 renderMessages('private-messages', msgs);
-            }, (err) => console.error(err));
+            });
         }
 
         function renderMessages(containerId, msgs) {
             const container = document.getElementById(containerId);
             const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
-            
             container.innerHTML = '';
             msgs.forEach(m => {
                 const isMe = m.senderId === currentUser.uid || m.from === currentUser.uid;
                 const div = document.createElement('div');
                 div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-1`;
-                
-                // Для сообщений не от себя отображаем цифровой ID
                 const senderIdDisplay = isMe ? '' : `ID: ${generateNumericId(m.senderId || m.from)}`;
+
+                let content = '';
+                if (m.audio) {
+                    content = `
+                        <div class="voice-message py-1">
+                            <button onclick="playVoice(this, '${m.audio}')" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/></svg>
+                            </button>
+                            <span class="text-[10px] opacity-70 italic tracking-tighter">Голосовое • 🔊 〰️</span>
+                        </div>
+                    `;
+                } else {
+                    content = `<div class="leading-relaxed">${escape(m.text)}</div>`;
+                }
 
                 div.innerHTML = `
                     <div class="message-bubble px-4 py-2.5 rounded-2xl text-[13.5px] ${
@@ -518,14 +643,21 @@
                                 <span class="text-[10px] font-bold text-blue-400">${escape(m.senderName || 'Пользователь')}</span>
                                 <span class="text-[8px] font-mono font-bold text-slate-500">${senderIdDisplay}</span>
                             </div>` : ''}
-                        <div class="leading-relaxed">${escape(m.text)}</div>
+                        ${content}
                     </div>
                 `;
                 container.appendChild(div);
             });
-            
             if (isAtBottom) container.scrollTop = container.scrollHeight;
         }
+
+        window.playVoice = (btn, base64) => {
+            const audio = new Audio(base64);
+            const icon = btn.innerHTML;
+            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 3.5A.5.5 0 0 1 6 4v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm5 0a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/></svg>`;
+            audio.play();
+            audio.onended = () => btn.innerHTML = icon;
+        };
 
         document.querySelectorAll('.chat-input-form').forEach(form => {
             form.onsubmit = async (e) => {
@@ -534,22 +666,18 @@
                 const text = input.value.trim();
                 if (!text || !currentUser) return;
                 input.value = '';
-
                 const isGlobal = form.closest('#view-global');
                 const path = isGlobal ? 'messages' : 'direct_messages';
                 const payload = {
                     text,
                     createdAt: serverTimestamp(),
-                    senderName: userData.displayName
+                    senderName: userData.displayName,
+                    senderId: currentUser.uid
                 };
-
-                if (isGlobal) {
-                    payload.senderId = currentUser.uid;
-                } else {
+                if (!isGlobal) {
                     payload.from = currentUser.uid;
                     payload.to = activePrivatePartner.uid;
                 }
-
                 try {
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', path), payload);
                 } catch(e) { console.error(e); }
@@ -560,9 +688,7 @@
             const btn = document.getElementById('save-profile-btn');
             const newName = document.getElementById('profile-name-input').value.trim();
             if (!newName) return;
-            
-            btn.disabled = true;
-            btn.innerText = "...";
+            btn.disabled = true; btn.innerText = "...";
             try {
                 await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), { displayName: newName });
                 setTimeout(() => { btn.disabled = false; btn.innerText = "ОК"; }, 500);
@@ -583,7 +709,6 @@
             const file = e.target.files[0];
             if (!file) return;
             if (file.size > 512000) return alert("Файл слишком большой (макс 500 КБ)");
-
             const reader = new FileReader();
             reader.onload = async (ev) => {
                 const base64 = ev.target.result;
