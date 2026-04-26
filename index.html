@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAX 2 Pro Messenger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .view { display: none; height: 100%; }
+        .view.active { display: flex; flex-direction: column; }
+
+        .chat-container { flex: 1; overflow-y: auto; }
+
+        .message-bubble {
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        .nav-btn.active { color: #3b82f6; border-top: 2px solid #3b82f6; }
+    </style>
+</head>
+<body>
+
+    <!-- Auth Overlay -->
+    <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 px-4">
+        <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl">
+            <div class="flex justify-center mb-6">
+                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center font-bold text-3xl shadow-lg">M2</div>
+            </div>
+            
+            <div id="auth-mode-container">
+                <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center">Вход в MAX 2</h2>
+                <div class="space-y-4">
+                    <input type="email" id="auth-email" placeholder="Email" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="auth-password" placeholder="Пароль" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="auth-name" placeholder="Ваше Имя (для регистрации)" class="hidden w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500">
+                    
+                    <button id="auth-submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all">Войти</button>
+                    
+                    <p class="text-center text-sm text-slate-500">
+                        <span id="auth-toggle-text">Нет аккаунта?</span> 
+                        <button id="auth-toggle-btn" class="text-blue-400 font-semibold ml-1">Создать</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Structure -->
+    <div id="app-container" class="flex flex-col h-screen max-w-2xl mx-auto border-x border-slate-800 bg-slate-900 shadow-2xl hidden">
+        
+        <!-- Header -->
+        <header class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/80 backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <div id="header-avatar" class="w-10 h-10 bg-slate-700 rounded-full bg-cover bg-center border border-slate-600"></div>
+                <div>
+                    <h1 id="view-title" class="font-semibold text-lg">Общий чат</h1>
+                    <p id="user-status" class="text-[10px] text-green-400 font-mono">ONLINE</p>
+                </div>
+            </div>
+            <button id="logout-btn" class="text-slate-500 hover:text-red-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
+        </header>
+
+        <!-- Views Container -->
+        <div class="flex-1 overflow-hidden relative">
+            
+            <!-- 1. Global Chat View -->
+            <section id="view-global" class="view active">
+                <div id="global-messages" class="chat-container p-4 space-y-4"></div>
+                <form class="p-4 border-t border-slate-800 flex gap-2 chat-input-form">
+                    <input type="text" placeholder="Сообщение в общий чат..." class="flex-1 bg-slate-800 rounded-xl px-4 py-3 text-sm outline-none">
+                    <button type="submit" class="bg-blue-600 p-3 rounded-xl"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                </form>
+            </section>
+
+            <!-- 2. Contacts/DMs View -->
+            <section id="view-contacts" class="view">
+                <div class="p-4 border-b border-slate-800">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Пользователи</h3>
+                </div>
+                <div id="contacts-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+                    <!-- User list item -->
+                </div>
+            </section>
+
+            <!-- 3. Active Private Chat View -->
+            <section id="view-private-chat" class="view">
+                <div class="p-2 border-b border-slate-800 bg-slate-800/30 flex items-center">
+                    <button onclick="switchView('contacts')" class="p-2 text-slate-400">← Назад</button>
+                    <span id="private-chat-partner" class="font-bold ml-2">...</span>
+                </div>
+                <div id="private-messages" class="chat-container p-4 space-y-4"></div>
+                <form class="p-4 border-t border-slate-800 flex gap-2 chat-input-form">
+                    <input type="text" placeholder="Личное сообщение..." class="flex-1 bg-slate-800 rounded-xl px-4 py-3 text-sm outline-none">
+                    <button type="submit" class="bg-indigo-600 p-3 rounded-xl"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                </form>
+            </section>
+
+            <!-- 4. Profile View -->
+            <section id="view-profile" class="view">
+                <div class="p-6 space-y-6 overflow-y-auto">
+                    <div class="flex flex-col items-center">
+                        <div id="profile-avatar-display" class="w-24 h-24 bg-slate-700 rounded-full border-4 border-slate-800 bg-cover bg-center mb-4 relative group">
+                            <label for="avatar-upload" class="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center rounded-full cursor-pointer text-[10px] font-bold">ИЗМЕНИТЬ</label>
+                            <input type="file" id="avatar-upload" class="hidden" accept="image/*">
+                        </div>
+                        <p id="profile-uid" class="text-[10px] font-mono text-slate-500 uppercase"></p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs text-slate-500 block mb-1">Отображаемое имя</label>
+                            <input type="text" id="profile-name-input" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none">
+                        </div>
+                        <button id="save-profile-btn" class="w-full bg-blue-600 py-3 rounded-xl font-bold">Сохранить имя</button>
+                        
+                        <div class="pt-6 border-t border-slate-800">
+                            <label class="text-xs text-slate-500 block mb-1">Новый пароль</label>
+                            <input type="password" id="profile-pass-input" placeholder="Введите для смены..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none">
+                        </div>
+                        <button id="save-pass-btn" class="w-full bg-slate-700 py-3 rounded-xl font-bold">Обновить пароль</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer Navigation -->
+        <nav class="flex border-t border-slate-800 bg-slate-900 shadow-2xl">
+            <button onclick="switchView('global')" class="nav-btn flex-1 py-3 flex flex-col items-center gap-1 active" id="nav-global">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="text-[10px]">Чат</span>
+            </button>
+            <button onclick="switchView('contacts')" class="nav-btn flex-1 py-3 flex flex-col items-center gap-1" id="nav-contacts">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span class="text-[10px]">ЛС</span>
+            </button>
+            <button onclick="switchView('profile')" class="nav-btn flex-1 py-3 flex flex-col items-center gap-1" id="nav-profile">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span class="text-[10px]">Профиль</span>
+            </button>
+        </nav>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
+            signOut, onAuthStateChanged, updatePassword 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, doc, setDoc, getDoc, updateDoc, collection, 
+            addDoc, onSnapshot, serverTimestamp, query, where, or 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCFXk-lrKxyXlVC0NpSl1IIfG3dOOWlGJI",
+            authDomain: "max-2-d595f.firebaseapp.com",
+            projectId: "max-2-d595f",
+            storageBucket: "max-2-d595f.firebasestorage.app",
+            messagingSenderId: "198424406783",
+            appId: "1:198424406783:web:4c3a5fdac7d7b229c43aca",
+            measurementId: "G-8C6VMDV4HP"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = firebaseConfig.projectId;
+
+        // State
+        let currentUser = null;
+        let userData = null;
+        let activePrivatePartner = null;
+        let isRegistration = false;
+
+        // --- AUTH LOGIC ---
+        const authScreen = document.getElementById('auth-screen');
+        const authSubmit = document.getElementById('auth-submit');
+        const authToggle = document.getElementById('auth-toggle-btn');
+        const authNameInput = document.getElementById('auth-name');
+
+        authToggle.onclick = () => {
+            isRegistration = !isRegistration;
+            document.getElementById('auth-title').innerText = isRegistration ? 'Регистрация' : 'Вход в MAX 2';
+            authSubmit.innerText = isRegistration ? 'Создать аккаунт' : 'Войти';
+            document.getElementById('auth-toggle-text').innerText = isRegistration ? 'Уже есть аккаунт?' : 'Нет аккаунта?';
+            authToggle.innerText = isRegistration ? 'Войти' : 'Создать';
+            authNameInput.classList.toggle('hidden', !isRegistration);
+        };
+
+        authSubmit.onclick = async () => {
+            const email = document.getElementById('auth-email').value.trim();
+            const pass = document.getElementById('auth-password').value.trim();
+            const name = authNameInput.value.trim();
+
+            if (!email || !pass) return alert("Заполните поля!");
+
+            try {
+                if (isRegistration) {
+                    if (!name) return alert("Введите имя!");
+                    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                    // Create user profile in Firestore
+                    await setDoc(doc(db, 'artifacts', appId, 'users', cred.user.uid), {
+                        uid: cred.user.uid,
+                        displayName: name,
+                        email: email,
+                        avatar: '',
+                        lastSeen: serverTimestamp()
+                    });
+                } else {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                }
+            } catch (e) {
+                alert("Ошибка: " + e.message);
+            }
+        };
+
+        document.getElementById('logout-btn').onclick = () => signOut(auth);
+
+        onAuthStateChanged(auth, async (u) => {
+            if (u) {
+                currentUser = u;
+                authScreen.classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                
+                // Fetch User Data
+                const userDoc = await getDoc(doc(db, 'artifacts', appId, 'users', u.uid));
+                userData = userDoc.data();
+                
+                updateUIProfile();
+                setupGlobalChat();
+                setupContacts();
+            } else {
+                document.getElementById('app-container').classList.add('hidden');
+                authScreen.classList.remove('hidden');
+            }
+        });
+
+        // --- UI & NAVIGATION ---
+        window.switchView = (viewName) => {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById('view-' + viewName).classList.add('active');
+            if (document.getElementById('nav-' + viewName)) {
+                document.getElementById('nav-' + viewName).classList.add('active');
+            }
+
+            const titles = { global: 'Общий чат', contacts: 'Сообщения', profile: 'Ваш профиль' };
+            document.getElementById('view-title').innerText = titles[viewName] || 'Чат';
+        };
+
+        function updateUIProfile() {
+            if (!userData) return;
+            const avatars = document.querySelectorAll('#header-avatar, #profile-avatar-display');
+            avatars.forEach(el => {
+                el.style.backgroundImage = userData.avatar ? `url(${userData.avatar})` : 'none';
+            });
+            document.getElementById('profile-name-input').value = userData.displayName;
+            document.getElementById('profile-uid').innerText = "ID: " + userData.uid;
+        }
+
+        // --- GLOBAL CHAT ---
+        function setupGlobalChat() {
+            const ref = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+            onSnapshot(ref, (snap) => {
+                const msgs = [];
+                snap.forEach(d => msgs.push({id: d.id, ...d.data()}));
+                msgs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                renderMessages('global-messages', msgs);
+            });
+        }
+
+        // --- CONTACTS & DMS ---
+        function setupContacts() {
+            const usersRef = collection(db, 'artifacts', appId, 'users'); // Note: In real app use specific index for users
+            onSnapshot(usersRef, (snap) => {
+                const list = document.getElementById('contacts-list');
+                list.innerHTML = '';
+                snap.forEach(d => {
+                    const u = d.data();
+                    if (u.uid === currentUser.uid) return;
+
+                    const item = document.createElement('div');
+                    item.className = "flex items-center gap-3 p-3 bg-slate-800/40 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer";
+                    item.innerHTML = `
+                        <div class="w-10 h-10 rounded-full bg-slate-700 bg-cover bg-center border border-slate-600" style="background-image: ${u.avatar ? `url(${u.avatar})` : 'none'}"></div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-sm">${escape(u.displayName)}</h4>
+                            <p class="text-[10px] text-slate-500 font-mono">${u.uid.slice(0,8)}</p>
+                        </div>
+                    `;
+                    item.onclick = () => openPrivateChat(u);
+                    list.appendChild(item);
+                });
+            });
+        }
+
+        async function openPrivateChat(partner) {
+            activePrivatePartner = partner;
+            document.getElementById('private-chat-partner').innerText = partner.displayName;
+            switchView('private-chat');
+            document.getElementById('view-title').innerText = "Личная переписка";
+
+            // Private messages query: All messages between me and partner
+            // In a simple app we use a shared collection, filter in JS (Rule 2)
+            const ref = collection(db, 'artifacts', appId, 'public', 'data', 'direct_messages');
+            onSnapshot(ref, (snap) => {
+                const msgs = [];
+                snap.forEach(d => {
+                    const m = d.data();
+                    if ((m.from === currentUser.uid && m.to === partner.uid) || 
+                        (m.from === partner.uid && m.to === currentUser.uid)) {
+                        msgs.push({id: d.id, ...m});
+                    }
+                });
+                msgs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                renderMessages('private-messages', msgs);
+            });
+        }
+
+        // --- RENDERING HELPERS ---
+        function renderMessages(containerId, msgs) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            msgs.forEach(m => {
+                const isMe = m.senderId === currentUser.uid || m.from === currentUser.uid;
+                const div = document.createElement('div');
+                div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+                
+                div.innerHTML = `
+                    <div class="message-bubble px-4 py-2 rounded-2xl text-sm ${
+                        isMe ? 'bg-blue-600 text-white rounded-tr-none shadow-md shadow-blue-900/30' : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/50'
+                    }">
+                        ${!isMe ? `<div class="text-[9px] font-bold text-blue-400 mb-1">${escape(m.senderName || 'Собеседник')}</div>` : ''}
+                        <div>${escape(m.text)}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // --- FORM SUBMISSIONS ---
+        document.querySelectorAll('.chat-input-form').forEach(form => {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const input = form.querySelector('input');
+                const text = input.value.trim();
+                if (!text || !currentUser) return;
+                input.value = '';
+
+                const isGlobal = form.closest('#view-global');
+                const path = isGlobal ? 'messages' : 'direct_messages';
+                const payload = {
+                    text,
+                    createdAt: serverTimestamp()
+                };
+
+                if (isGlobal) {
+                    payload.senderId = currentUser.uid;
+                    payload.senderName = userData.displayName;
+                } else {
+                    payload.from = currentUser.uid;
+                    payload.to = activePrivatePartner.uid;
+                    payload.senderName = userData.displayName;
+                }
+
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', path), payload);
+            };
+        });
+
+        // --- PROFILE ACTIONS ---
+        document.getElementById('save-profile-btn').onclick = async () => {
+            const newName = document.getElementById('profile-name-input').value.trim();
+            if (!newName) return;
+            await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), { displayName: newName });
+            userData.displayName = newName;
+            alert("Имя обновлено!");
+        };
+
+        document.getElementById('save-pass-btn').onclick = async () => {
+            const newPass = document.getElementById('profile-pass-input').value.trim();
+            if (newPass.length < 6) return alert("Пароль слишком короткий (мин. 6 символов)");
+            try {
+                await updatePassword(currentUser, newPass);
+                alert("Пароль успешно изменен!");
+                document.getElementById('profile-pass-input').value = '';
+            } catch (e) { alert("Ошибка: " + e.message); }
+        };
+
+        // Avatar Upload as Base64
+        document.getElementById('avatar-upload').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 500000) return alert("Файл слишком большой (макс 500 КБ)");
+
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const base64 = ev.target.result;
+                await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), { avatar: base64 });
+                userData.avatar = base64;
+                updateUIProfile();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function escape(s) {
+            let d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+    </script>
+</body>
+</html>
